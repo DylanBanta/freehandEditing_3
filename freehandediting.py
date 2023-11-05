@@ -73,6 +73,10 @@ class FreehandEditing:
         # Add toolbar button and menu item
         self.iface.digitizeToolBar().addAction(self.freehand_edit)
         self.iface.editMenu().addAction(self.freehand_edit)
+        
+        # Set up the keyboard shortcut
+        self.shortcut = QShortcut(QKeySequence("Ctrl+Shift+E"), self.iface.mainWindow())
+        self.shortcut.activated.connect(self.activateFreehandTool)
 
         self.spinBox = QDoubleSpinBox(self.iface.mainWindow())
         self.spinBox.setDecimals(3)
@@ -102,6 +106,13 @@ class FreehandEditing:
 
         # Get the tool
         self.tool = FreehandEditingTool(self.canvas)
+
+    def activateFreehandTool(self):
+        # Check if the current layer is compatible with the Freehand Editing Tool
+        layer = self.canvas.currentLayer()
+        if layer and layer.isEditable() and (layer.geometryType() == QgsWkbTypes.LineGeometry or layer.geometryType() == QgsWkbTypes.PolygonGeometry):
+            # Activate the Freehand Editing Tool
+            self.freehandediting()
 
     def tolerancesettings(self):
         settings = QSettings()
@@ -170,15 +181,20 @@ class FreehandEditing:
 
         if layer.crs().projectionAcronym() == "longlat":
             tolerance = 0.000
+            print("0 tolerance")
         else:
             tolerance = settings.value("/freehandEdit/tolerance",
                                        0.000, type=float)
+            print("punkt oder komma ", tolerance)
 
         #On the Fly reprojection.
         if layerCRSSrsid != projectCRSSrsid:
             p = QgsCoordinateReferenceSystem("EPSG:"+str(projectCRSSrsid))
             l = QgsCoordinateReferenceSystem("EPSG:"+str(layerCRSSrsid))
             geom.transform(QgsCoordinateTransform(p,l,QgsProject.instance()))
+
+
+        print(tolerance,"tolerance")
         s = geom.simplify(tolerance)
 
         #validate geometry
